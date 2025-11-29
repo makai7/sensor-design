@@ -1,0 +1,180 @@
+\documentclass[12pt,a4paper]{article}
+
+% --- 中文支持 ---
+\usepackage{xeCJK}           % XeLaTeX 中文支持
+\setCJKmainfont{SimSun}      % 宋体为主字体（可改为 SimHei/NSimSun 等）
+\setCJKmonofont{SimSun}      % 等宽字体
+\setCJKfamilyfont{hei}{SimHei} % 黑体
+\newcommand{\hei}[1]{{\CJKfamily{hei}#1}}
+
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+
+\title{\hei{基于光学 ToF 与被动麦克风阵列 AoA 的多模态测距与定位传感系统设计}}
+
+
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{设计背景}
+在常用测距测位传感系统中多为光学测量或声学测量，单一传感模态在复杂环境（如玻璃、低反射表面、噪声环境）下易失效。多模态融合可提升鲁棒性与精度。光学 ToF 模块提供高精度距离测量，但对透明或镜面物体失效；被动麦克风阵列通过声源方向估计（AoA）补充信息。结合视觉检测进一步增强系统能力。
+
+
+\section{总体设计思路}
+\subsection{目标}
+设计并实现一个“以光学 ToF 为主、被动麦克风阵列 AoA 为辅”的多模态传感系统，用于室内近距（约0.2–3 m）物体/声源的定位。系统通过模态冗余与失效补偿提高在复杂表面（玻璃、低反射、暗色）及噪声环境下的鲁棒性。重点在传感器链路（物理→电信号→数字采样）、时序/校准与误差分析，算法采用可解释、计算量可控的方案。
+
+\subsection{系统构成}
+\begin{itemize}
+    \item 主传感：光学 ToF 模块（主动，直接测距）
+    \item 被动声学：MEMS 麦克风阵列 → AoA（方向）估计（GCC-PHAT）
+    \item 主控平台：STM32F4/F7 MCU（实时采样 + DSP）
+    \item 数据融合：置信度加权为主，卡尔曼滤波（KF/EKF）可选
+\end{itemize}
+
+\section{设计选择理由}
+\begin{enumerate}
+    \item 互补性：ToF 在多数材质/照明下精度高但对透明/镜面失效；被动声学可提供方向信息。
+    \item 资源可控：现成 ToF 模块 + MEMS 麦克风阵列 + STM32 可完成硬件链路、信号处理与基础融合。
+    \item 契合度高：覆盖传感器物理、模拟前端、采样时序、校准与误差分析。
+    \item 可扩展性：可后续增加 EKF、更多麦克风阵列或视觉模块，形成多模态融合
+\end{enumerate}
+
+\section{物理原理概述}
+\subsection{光学 ToF}
+发送短脉冲光，测量往返时间 $\Delta t$：
+\[
+r_{\text{opt}} = \frac{c \cdot \Delta t}{2}
+\]
+其中 $c$ 为光速。模块输出距离和信号质量指标。
+特点：精度高，响应快；对透明或低反射表面可能失效。
+
+\subsection{单目视觉}
+用于目标检测和角度估计。若已知目标尺寸，可粗略估计深度：
+\[
+d \approx \frac{f \cdot W}{p}
+\]
+$f$为焦距（像素），$W$为目标实际宽度，$p$为像素宽度。
+
+\subsection{被动声学 TDOA / AoA}
+\begin{itemize}
+    \item 原理：声源发声，声波到达各麦克风的时间不同，测量通道间到达时间差$\Delta t$（TDOA），由阵列几何推算入射角（AoA）。
+    \item 限制：只能测方向，不能直接测距；需要目标或环境发声。
+\end{itemize}
+
+\section{核心算法概念}
+\subsection{GCC-PHAT TDOA}
+\begin{enumerate}
+    \item FFT 得到每通道频域表示 $X_k(f)$
+    \item 计算互谱 $R_{ij}(f) = X_i(f) X_j^*(f)$
+    \item PHAT 加权：
+    \[
+    R_{ij}^{PHAT}(f) = \frac{R_{ij}(f)}{|R_{ij}(f)| + \varepsilon}
+    \]
+    \item IFFT 得到互相关函数 $r_{ij}(\tau)$，峰值对应延迟 $\hat{\tau}_{ij}$
+    \item 根据阵列几何求 AoA，结合多通道加权平均生成最终方向
+\end{enumerate}
+
+\subsection{视觉检测与 bearing}
+\[
+\theta_v = \arctan\left(\frac{u-c_x}{f_x}\right)
+\]
+
+\subsection{ToF 读取与质量指标}
+ToF 输出距离 $r$ 与回波强度 $S$ 或信号质量 $Q$，映射为置信度 $C_{\text{opt}}$。
+
+\subsection{融合策略}
+角度融合：
+\[
+\theta_f = \frac{C_v \theta_v + C_a \theta_a}{C_v + C_a}
+\]
+
+距离选择：若 $C_{\text{opt}}$ 高，用 ToF 距离；否则使用视觉或其他策略。
+
+线性 KF 或 EKF 对时间序列观测进行平滑/跟踪。
+
+
+
+\section{关键物料及作用}
+\begin{itemize}
+    \item \textbf{STM32F4/F7 MCU}：采样、DSP运算、融合逻辑
+    \item \textbf{光学 ToF 模块}：主动测距，提供置信度
+    \item \textbf{单目摄像头}：目标检测、方向信息
+    \item \textbf{MEMS 麦克风 ×4}：阵列采集声学信号，用于 AoA
+    \item \textbf{前端/ADC}：信号放大滤波
+    \item \textbf{电源/时钟/连接线}：稳定供电和时序
+\end{itemize}
+
+\section{AoA 原理}
+对于两麦克风线性阵列：
+\[
+\Delta t = \frac{B \sin\theta}{c} \quad \Rightarrow \quad \theta = \arcsin\left(\frac{c \Delta t}{B}\right)
+\]
+\begin{itemize}
+    \item 无法直接测距，只提供方向线
+    \item 必须有声源（目标或环境音）
+\end{itemize}
+
+\section{TDOA / GCC-PHAT 参数考量}
+\begin{itemize}
+    \item 采样率 $f_s$：分辨率 $1/f_s$，可提升亚样本精度
+    \item 窗长 $N$：平衡时域/频域分辨率
+    \item 多径处理：选择直接到达峰
+    \item 阵列基线 $B$：越长角度分辨率越高，但受物理限制
+\end{itemize}
+
+\section{置信度设计}
+\begin{itemize}
+    \item 光学 ToF 置信度 $C_{\text{opt}}$：回波强度/信号质量
+    \item 视觉置信度 $C_v$：检测器置信度 + bbox 稳定性
+    \item 声学置信度 $C_a$：互相关峰值/背景能量比 + 多通道一致性
+\end{itemize}
+
+\section{卡尔曼滤波（KF/EKF）}
+\begin{itemize}
+    \item 线性 KF：适用于线性状态与观测
+    \item EKF：处理非线性观测（如 bearing, r）
+    \item 实现难度中等，STM32F4 完全可用
+\end{itemize}
+
+\section{误差分析}
+\subsection{误差来源}
+\begin{itemize}
+    \item ToF：时间测量噪声、表面反射、背景光
+    \item 视觉：相机内参、像素量化、目标检测错误
+    \item AoA：采样/量化误差、阵列基线测量误差、多径、声速偏差
+\end{itemize}
+
+\subsection{误差传播公式}
+若 $x = d \cos \theta, y = d \sin \theta$：
+\[
+\sigma_x^2 = (\cos\theta)^2 \sigma_d^2 + (d\sin\theta)^2 \sigma_\theta^2, \quad
+\sigma_y^2 = (\sin\theta)^2 \sigma_d^2 + (d\cos\theta)^2 \sigma_\theta^2
+\]
+
+\section{校准流程}
+\begin{enumerate}
+    \item 相机内参标定
+    \item ToF 偏置校准
+    \item 麦克风阵列时延和增益校准
+    \item 传感器外参标定
+    \item 温度校正（声速）
+    \item 测试与验证
+\end{enumerate}
+
+
+
+
+
+\end{document}

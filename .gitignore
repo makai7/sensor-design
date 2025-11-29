@@ -1,0 +1,9 @@
+# LaTeX 编译产生的临时文件
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+

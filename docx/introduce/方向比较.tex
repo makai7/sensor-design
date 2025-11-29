@@ -1,0 +1,243 @@
+\documentclass[12pt,a4paper]{article}
+
+% ---------------- 中文支持 ----------------
+\usepackage{xeCJK}
+\setCJKmainfont{SimSun}
+\setCJKmonofont{SimSun}
+\setCJKfamilyfont{hei}{SimHei}
+\newcommand{\hei}[1]{{\CJKfamily{hei}#1}}
+
+% ---------------- 基础宏包 ----------------
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{multirow}
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+
+\title{\hei{光学与声学融合测距测位系统技术总览报告}}
+\author{\hei{设计技术方向与方案比较}}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+% ===========================
+\section{总体说明}
+本报告系统整理了主动光学、被动光学、主动声学、被动声学四类测距测位技术，以及其常用的核心算法（如ToF、立体视觉、超声TDoA、声源定位AoA、GCC-PHAT等），并比较其优缺点、难度、成本、典型误差来源与融合策略。  
+目标是为课程设计中的多模态测距定位系统提供系统性的技术参考与方案选型依据。
+
+% ===========================
+\section{光学测距与测位技术}
+
+\subsection{主动光学（Active Optical Sensing）}
+主动光学系统通过向目标发射光信号（通常为红外或激光），测量反射光的时间、相位或强度变化以获得距离信息。
+
+\subsubsection{1. 飞行时间法（ToF, Time-of-Flight）}
+\begin{itemize}
+    \item 原理：测量光脉冲往返时间 $\Delta t$，距离 $r = \frac{c\Delta t}{2}$
+    \item 典型器件：VL53L0X, VL53L5CX, AD-355系列
+    \item 优点：精度高（mm级），响应快（ms级）
+    \item 缺点：对透明/吸光材料精度下降；多径效应明显
+    \item 输出：距离 + 回波强度（信号置信度）
+\end{itemize}
+
+\subsubsection{2. 相位调制 ToF}
+\begin{itemize}
+    \item 采用连续调制波光源，测量调制相位差：
+    \[
+    r = \frac{c \Delta \phi}{4\pi f_m}
+    \]
+    \item 精度更高，适合中短距离
+\end{itemize}
+
+\subsubsection{3. 主动结构光}
+\begin{itemize}
+    \item 发射特定图案，通过相机观测其畸变重建深度
+    \item 常用于RGB-D相机（如Kinect、RealSense）
+    \item 缺点：算法与光学结构复杂
+\end{itemize}
+
+\subsection{被动光学（Passive Optical Sensing）}
+通过自然光或反射光成像获取信息，不主动发射信号。
+
+\subsubsection{1. 单目视觉几何法}
+\begin{itemize}
+    \item 若目标尺寸 $W$ 已知，则距离可由相似三角形：
+    \[
+    d = \frac{f \cdot W}{p}
+    \]
+    其中 $f$ 为焦距，$p$ 为像素尺寸
+    \item 优点：低成本
+    \item 缺点：精度低，需目标特征已知
+\end{itemize}
+
+\subsubsection{2. 双目立体视觉}
+\begin{itemize}
+    \item 通过两相机的视差 $\Delta x$ 计算深度：
+    \[
+    Z = \frac{f \cdot B}{\Delta x}
+    \]
+    \item 优点：精度高，完全被动
+    \item 缺点：校准复杂，对光照与纹理敏感
+\end{itemize}
+
+\subsubsection{3. 视觉算法}
+常用算法：
+\begin{itemize}
+    \item 特征匹配：SIFT, ORB
+    \item 目标检测：YOLO, OpenCV contour-based
+    \item 跟踪与位姿估计：PnP, optical flow
+\end{itemize}
+
+% ===========================
+\section{声学测距与测位技术}
+
+\subsection{主动声学（Active Acoustic Sensing）}
+主动发射声波并接收回波，通过时间差计算距离。
+
+\subsubsection{1. 超声波 ToF 测距}
+\[
+r = \frac{v_s \Delta t}{2}
+\]
+其中 $v_s \approx 343 \text{ m/s}$ 为声速。  
+特点：
+\begin{itemize}
+    \item 成本低（常用HC-SR04）
+    \item 精度cm级
+    \item 易受温湿度影响
+\end{itemize}
+
+\subsubsection{2. 多点超声阵列 TDoA}
+多个发射/接收器计算时间差（TDoA）以三角定位。  
+优点：可定位静止物体；缺点：同步与串扰难处理。
+
+\subsection{被动声学（Passive Acoustic Sensing）}
+系统仅接收声音，不主动发射信号。通过声源信号到达各麦克风时间差（TDoA）估计声源方向（AoA）。
+
+\subsubsection{1. AoA（Angle of Arrival）原理}
+\[
+\Delta t = \frac{B \sin\theta}{v_s} \Rightarrow \theta = \arcsin\left(\frac{v_s \Delta t}{B}\right)
+\]
+\begin{itemize}
+    \item $B$：麦克风间距
+    \item $\Delta t$：到达时间差
+    \item $\theta$：入射角
+\end{itemize}
+
+\subsubsection{2. TDoA 估计算法}
+\begin{enumerate}
+    \item 交叉相关法（CCF）
+    \item 广义互相关（GCC）
+    \item PHAT 加权（GCC-PHAT）：
+    \[
+    R_{ij}^{PHAT}(f) = \frac{X_i(f) X_j^*(f)}{|X_i(f) X_j^*(f)| + \varepsilon}
+    \]
+    \item IFFT 得时域互相关函数 $r_{ij}(\tau)$，峰值对应延迟 $\hat{\tau}$
+\end{enumerate}
+
+\subsubsection{3. 环境声要求}
+\begin{itemize}
+    \item 被动声学需声源存在（目标发声或背景音）
+    \item 安静环境下需主动声源辅助
+\end{itemize}
+
+% ===========================
+\section{多模态融合策略}
+
+\subsection{融合目标}
+\begin{itemize}
+    \item 光学与声学互补：ToF 对透明/暗面失效时，声学仍可用
+    \item 增强鲁棒性：多源信息互证、失效检测与补偿
+\end{itemize}
+
+\subsection{置信度加权融合}
+\[
+x_f = \frac{\sum_i C_i x_i}{\sum_i C_i}
+\]
+其中 $C_i$ 为各传感器输出置信度（基于信号质量、互相关峰值、检测置信度等）。
+
+\subsection{卡尔曼滤波（KF / EKF）}
+\begin{itemize}
+    \item \textbf{KF}：线性状态估计，低复杂度
+    \item \textbf{EKF}：扩展至非线性系统
+    \item 主要用于连续跟踪与噪声平滑
+    \item 可选模块，不影响基本功能
+\end{itemize}
+
+状态与观测模型：
+\[
+x_{k+1} = A x_k + w_k,\quad z_k = H x_k + v_k
+\]
+通过预测与更新循环最小化误差协方差。
+
+% ===========================
+\section{方案比较与分析}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+维度 & 主动光学 & 被动光学 & 主动声学 & 被动声学 \\ \midrule
+主要原理 & 光ToF & 图像几何 & 声ToF & AoA/TDoA \\
+能否主动测距 & 是 & 否 & 是 & 否 \\
+典型应用 & LiDAR, ToF相机 & 视觉定位 & 超声测距 & 声源定位 \\
+精度 & 高（mm） & 中（cm） & 中（cm） & 低（角度） \\
+抗环境干扰 & 一般 & 差 & 一般 & 中等 \\
+实现复杂度 & 中 & 高 & 低 & 中 \\
+成本 & 中 & 中 & 低 & 中 \\
+课程适配性 & 高 & 中 & 高 & 高 \\
+\bottomrule
+\end{tabular}
+\caption{四类测距测位技术比较}
+\end{table}
+
+\subsection{误差来源与分析}
+\begin{itemize}
+    \item 光学：表面反射率、噪声光、温度漂移
+    \item 声学：声速变化、麦克风间距误差、多径效应
+    \item 视觉：相机标定误差、像素量化、特征检测误差
+\end{itemize}
+
+误差传播（二维）：
+\[
+\sigma_x^2 = (\cos\theta)^2\sigma_d^2 + (d\sin\theta)^2\sigma_\theta^2, \quad
+\sigma_y^2 = (\sin\theta)^2\sigma_d^2 + (d\cos\theta)^2\sigma_\theta^2
+\]
+
+% ===========================
+\section{关键硬件与作用}
+
+\begin{itemize}
+    \item \textbf{STM32F4/F7 MCU}：主控采样、信号处理、融合逻辑
+    \item \textbf{ToF 模块（VL53L5CX）}：主动光学测距
+    \item \textbf{摄像头模块（OV2640）}：视觉识别与角度估计
+    \item \textbf{MEMS 麦克风阵列}：声源方向估计（AoA）
+    \item \textbf{音频前端/ADC}：信号放大与模数转换
+    \item \textbf{电源/时钟模块}：系统供电与同步
+\end{itemize}
+
+% ===========================
+\section{综合设计思路}
+\begin{enumerate}
+    \item 以主动光学ToF为主，提供高精度距离测量；
+    \item 以被动声学AoA为辅，提供方向与失效补偿；
+    \item 采用置信度加权融合策略；
+    \item 若时间允许，加入卡尔曼滤波进行动态平滑；
+    \item 重点聚焦传感链路、误差分析与校准。
+\end{enumerate}
+
+% ===========================
+\section{结论与建议}
+\begin{itemize}
+    \item 主动光学 + 被动声学是在成本、难度、课程适配性上最佳平衡点；
+    \item 系统可扩展性强，可后续加入视觉模态与EKF；
+    \item 重点应放在信号链、时序、同步与误差标定；
+    \item 算法实现以可解释与可演示为主，追求系统完整性。
+\end{itemize}
+
+\end{document}

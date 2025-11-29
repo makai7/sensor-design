@@ -1,0 +1,73 @@
+graph TD
+    %% --- 1. 全局样式定义 (配色) ---
+    classDef hardware fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef buffer fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef process fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef algo fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
+
+    %% --- 2. 节点与层级定义 ---
+
+    subgraph Hardware_Layer [硬件感知层]
+        direction TB
+        Mic[MEMS 麦克风 x4]:::hardware
+        ToF[光学 ToF 传感器]:::hardware
+        Cam[视觉模块]:::hardware
+    end
+
+    subgraph Driver_Layer [驱动与传输层]
+        direction TB
+        I2S[I2S 接口]:::hardware
+        DMA[DMA 控制器]:::hardware
+        I2C[I2C 控制器]:::hardware
+        UART[UART 控制器]:::hardware
+    end
+
+    subgraph Data_Layer [数据缓冲层]
+        direction TB
+        AudioBuf[PCM 双缓冲队列<br/>Ping-Pong Buffer]:::buffer
+        DistReg[距离寄存器]:::buffer
+        AngleReg[视觉角度包]:::buffer
+    end
+
+    subgraph DSP_Layer [信号处理层 Core 0/1]
+        direction TB
+        FFT[FFT 变换<br/>Time -> Freq]:::algo
+        GCC[GCC-PHAT<br/>互功率谱计算]:::algo
+        IFFT[IFFT 逆变换]:::algo
+        Peak[峰值搜索 & TDOA]:::algo
+    end
+
+    subgraph App_Layer [应用与融合层]
+        direction TB
+        AoA[AoA 几何解算]:::process
+        Filter[置信度加权 &<br/>卡尔曼滤波]:::process
+        Result[最终坐标 x,y]:::process
+    end
+
+    %% --- 3. 连接关系定义 ---
+
+    %% 声学链路 (注意：数学公式必须加引号)
+    Mic -->|模拟/PDM信号| I2S
+    I2S -->|请求传输| DMA
+    DMA -->|写入| AudioBuf
+    AudioBuf -->|取帧| FFT
+    FFT -->|"X(f)"| GCC
+    GCC -->|"R_phat(f)"| IFFT
+    IFFT -->|"r(tau)"| Peak
+    Peak -->|Delta t| AoA
+
+    %% 光学链路 (ToF)
+    ToF -->|I2C 读取| I2C
+    I2C -->|更新| DistReg
+    DistReg -->|Distance| Filter
+
+    %% 视觉链路 (Cam)
+    Cam -->|UART 数据| UART
+    UART -->|解析| AngleReg
+    AngleReg -->|Theta_vision| Filter
+
+    %% 融合输出
+    AoA -->|Theta_audio| Filter
+    DistReg --> Filter
+    AngleReg --> Filter
+    Filter --> Result
