@@ -23,7 +23,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 #include "servo.h"
+#include "sonar.h"
+#include "ov2640.h"
+#include "vision.h"
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -90,24 +95,62 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
     Servo_Init(); 
+  Sonar_Init();
+
+    //== 摄像头自检 ===
+  if (OV2640_Init() == 0) {
+    // 成功！舵机开心地点点头（上下动）
+    Servo_Set_PWM(1, 1000); // 垂直舵机低头
+    HAL_Delay(300);
+    Servo_Set_PWM(1, 2000); // 抬头
+    HAL_Delay(300);
+    Servo_Set_PWM(1, 1500); // 回中
+      } else {
+    // 失败！舵机失望地摇摇头（左右动）
+    Servo_Set_PWM(0, 1000); // 水平左
+    HAL_Delay(300);
+    Servo_Set_PWM(0, 2000); // 水平右
+    HAL_Delay(300);
+    Servo_Set_PWM(0, 1500); // 回中
+}
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+Vision_Result_t target;
+int servo_pwm = 1500; // 初始中位
+
 while (1)
 {
-    // 测试代码：控制水平舵机左右扫描
-    for (int pwm = 500; pwm <= 2500; pwm += 10) {
-        Servo_Set_PWM(0, pwm); // 水平转动
-        HAL_Delay(5);          // 延时控制速度
+    // 1. 抓拍并计算
+    target = Vision_Process_Frame();
+    
+    if (target.detected) {
+        // 2. 简单的比例控制 (P算法)
+        // 图像中心是 x=80。如果 x>80 (在右边)，舵机要往右转(增加PWM)
+        // 误差 error = target.x - 80
+        int error = target.x - 80;
+        
+        // 调整灵敏度 Kp = 2
+        servo_pwm += (error * 2);
+        
+        // 3. 舵机执行
+        Servo_Set_PWM(0, servo_pwm);
+        
+        // 4. 如果对准了 (误差很小)，且距离合适，就算锁定
+        if (abs(error) < 10) {
+             float dist = Sonar_Measure();
+             (void)dist;
+             // 这里可以加一些蜂鸣器响声或者LED闪烁
+        }
+    } else {
+        // 没找到目标，保持不动，或者在这里写自动扫描逻辑
     }
-    HAL_Delay(500);
+    
+    HAL_Delay(10); // 稍微休息一下，给舵机反应时间
 
-    for (int pwm = 2500; pwm >= 500; pwm -= 10) {
-        Servo_Set_PWM(0, pwm);
-        HAL_Delay(5);
-    }
-    HAL_Delay(500);
 
     /* USER CODE END WHILE */
 
