@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug STM32",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/Debug/cubemx.elf", /* 注意：CMake Preset 通常会把输出放在 build/Debug 下 */
+            "device": "STM32F103C8",
+            "configFiles": [
+                "/usr/share/openocd/scripts/interface/stlink.cfg",
+                "/usr/share/openocd/scripts/target/stm32f1x.cfg"
+            ],
+            "preLaunchTask": "CMake Build" /* 调试前自动编译 */
+        }
+    ]
+}

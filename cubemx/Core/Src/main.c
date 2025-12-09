@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "servo.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -89,18 +89,31 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-
+    Servo_Init(); 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+while (1)
+{
+    // 测试代码：控制水平舵机左右扫描
+    for (int pwm = 500; pwm <= 2500; pwm += 10) {
+        Servo_Set_PWM(0, pwm); // 水平转动
+        HAL_Delay(5);          // 延时控制速度
+    }
+    HAL_Delay(500);
+
+    for (int pwm = 2500; pwm >= 500; pwm -= 10) {
+        Servo_Set_PWM(0, pwm);
+        HAL_Delay(5);
+    }
+    HAL_Delay(500);
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
-  /* USER CODE END 3 */
+}
+/* USER CODE END 3 */
 }
 
 /**
