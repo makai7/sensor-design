@@ -29,6 +29,8 @@
 #include "ov2640.h"
 #include "vision.h"
 #include <stdlib.h>
+#include <stdio.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,7 +62,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+  extern void initialise_monitor_handles(void);
 /* USER CODE END 0 */
 
 /**
@@ -94,9 +96,13 @@ int main(void)
   MX_GPIO_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-    Servo_Init(); 
-  Sonar_Init();
 
+  printf("--- TEST MODE: Sonar Sensor ---\n");
+
+
+    // Servo_Init(); 
+  Sonar_Init();
+  // OV2640_Init();
     //== 摄像头自检 ===
   if (OV2640_Init() == 0) {
     // 成功！舵机开心地点点头（上下动）
@@ -118,46 +124,31 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-
-Vision_Result_t target;
-int servo_pwm = 1500; // 初始中位
-
-while (1)
-{
-    // 1. 抓拍并计算
-    target = Vision_Process_Frame();
+  while (1)
+  {
+    // ▼▼▼▼▼ 这里是全新的测试逻辑 (覆盖原来的视觉代码) ▼▼▼▼▼
     
-    if (target.detected) {
-        // 2. 简单的比例控制 (P算法)
-        // 图像中心是 x=80。如果 x>80 (在右边)，舵机要往右转(增加PWM)
-        // 误差 error = target.x - 80
-        int error = target.x - 80;
-        
-        // 调整灵敏度 Kp = 2
-        servo_pwm += (error * 2);
-        
-        // 3. 舵机执行
-        Servo_Set_PWM(0, servo_pwm);
-        
-        // 4. 如果对准了 (误差很小)，且距离合适，就算锁定
-        if (abs(error) < 10) {
-             float dist = Sonar_Measure();
-             (void)dist;
-             // 这里可以加一些蜂鸣器响声或者LED闪烁
-        }
+    // 1. 测距
+    float dist = Sonar_Measure();
+    
+    // 2. 打印
+    if (dist > 0) {
+        printf("Distance: %.2f cm\n", dist);
     } else {
-        // 没找到目标，保持不动，或者在这里写自动扫描逻辑
+        printf("Error: No Echo\n");
     }
     
-    HAL_Delay(10); // 稍微休息一下，给舵机反应时间
-
-
-    /* USER CODE END WHILE */
+    // 3. 延时
+    HAL_Delay(200); 
+    
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+  }
+  /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
 }
 /* USER CODE END 3 */
-}
+
 
 /**
   * @brief System Clock Configuration

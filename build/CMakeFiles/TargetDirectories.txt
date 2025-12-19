@@ -1,6 +1,0 @@
-/home/ian_arch/coding/sensor-design/build/CMakeFiles/cubemx.dir
-/home/ian_arch/coding/sensor-design/build/CMakeFiles/edit_cache.dir
-/home/ian_arch/coding/sensor-design/build/CMakeFiles/rebuild_cache.dir
-/home/ian_arch/coding/sensor-design/build/cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir
-/home/ian_arch/coding/sensor-design/build/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
-/home/ian_arch/coding/sensor-design/build/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir

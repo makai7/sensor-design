@@ -1,0 +1,6 @@
+/home/ian_arch/coding/Sensor_Hardware_Test/cubemx/build/Debug/CMakeFiles/cubemx.dir
+/home/ian_arch/coding/Sensor_Hardware_Test/cubemx/build/Debug/CMakeFiles/edit_cache.dir
+/home/ian_arch/coding/Sensor_Hardware_Test/cubemx/build/Debug/CMakeFiles/rebuild_cache.dir
+/home/ian_arch/coding/Sensor_Hardware_Test/cubemx/build/Debug/cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir
+/home/ian_arch/coding/Sensor_Hardware_Test/cubemx/build/Debug/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
+/home/ian_arch/coding/Sensor_Hardware_Test/cubemx/build/Debug/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir

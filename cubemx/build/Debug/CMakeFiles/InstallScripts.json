@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/ian_arch/coding/Sensor_Hardware_Test/cubemx/build/Debug/cmake_install.cmake",
+		"/home/ian_arch/coding/Sensor_Hardware_Test/cubemx/build/Debug/cmake/stm32cubemx/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
